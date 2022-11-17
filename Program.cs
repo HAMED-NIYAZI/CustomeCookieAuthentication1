@@ -14,7 +14,7 @@ using Microsoft.AspNetCore.HttpsPolicy;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-
+using CustomeCookieAuthentication.Common;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -31,6 +31,10 @@ options.UseSqlServer(builder.Configuration.GetConnectionString("MyConnectionStri
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme).AddCookie();
 //
 
+
+//Add services
+builder.Services.AddSingleton(typeof(EncryptionUtility));
+//
 
 
 var app = builder.Build();

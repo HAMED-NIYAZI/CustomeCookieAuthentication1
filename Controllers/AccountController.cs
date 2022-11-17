@@ -3,22 +3,25 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Security.Claims;
 using System.Threading.Tasks;
+using CustomeCookieAuthentication.Common;
 using CustomeCookieAuthentication.DataAccess;
 using CustomeCookieAuthentication.Models;
 using CustomeCookieAuthentication.Models.Entities;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace CustomeCookieAuthentication.Controllers
 {
     public class AccountController : Controller
     {
         private readonly MyDbContext _context;
-        public AccountController(MyDbContext context)
+        private readonly EncryptionUtility _encryptionUtility;
+        public AccountController(MyDbContext context, EncryptionUtility encryptionUtility)
         {
             _context = context;
-
+            _encryptionUtility = encryptionUtility;
         }
 
         #region Login And Logout
@@ -31,16 +34,36 @@ namespace CustomeCookieAuthentication.Controllers
         public async Task<IActionResult> Login(LoginViewModel loginViewModel)
         {
             //check validation
+            var findedUser = await _context.Users.SingleOrDefaultAsync(u => u.UserName == loginViewModel.UserName);
+
+
+            if (findedUser == null)
+            {
+                ModelState.AddModelError("", "Invalid UserName or Password");
+                return View();
+            }
+            var hashPassword = _encryptionUtility.HashSHA256(loginViewModel.Password);
+            if (findedUser.Password != hashPassword)
+            {
+                ModelState.AddModelError("", "invalid username or password");
+                return View();
+            }
+
+            if (!findedUser.IsActive)
+            {
+                ModelState.AddModelError("", "User Is Not Active");
+                return View();
+            }
 
 
             // لیستی از کلیم ها به یوزر دادیم
             var claims = new List<Claim>
             {
-                new Claim(ClaimTypes.Name,loginViewModel.UserName ?? ""),
-                new Claim("FullName","Hamed"),
+                new Claim(ClaimTypes.Name,findedUser.UserName),
+                new Claim("FullName",findedUser.UserName),
                 new Claim(ClaimTypes.Role,"Admin"),
-                new Claim("UserId","123"),
-              };
+                new Claim("UserId",findedUser.Id.ToString()),
+            };
 
 
             //ست کلیم ای دنتی تی 
@@ -96,7 +119,7 @@ namespace CustomeCookieAuthentication.Controllers
 
             var newUser = new User();
             newUser.UserName = registerViewModel.UserName;
-            newUser.Password = registerViewModel.Password;
+            newUser.Password = _encryptionUtility.HashSHA256(registerViewModel.Password);
             newUser.IsActive = true;
             newUser.Id = Guid.NewGuid();
             newUser.CreateDate = DateTime.Now;
