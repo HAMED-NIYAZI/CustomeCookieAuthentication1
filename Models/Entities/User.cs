@@ -19,5 +19,7 @@ namespace CustomeCookieAuthentication.Models.Entities
         public bool IsActive { get; set; }
         public DateTime CreateDate { get; set; }
 
+        public ICollection<Role> Roles { get; set; }
+
     }
 }
